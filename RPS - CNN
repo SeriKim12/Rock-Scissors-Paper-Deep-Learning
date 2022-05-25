@@ -1,0 +1,79 @@
+from tensorflow.keras.models import Sequential
+from tensorflow.keras.layers import Dense, Conv2D, MaxPooling2D, Flatten, Dropout
+from tensorflow.keras.preprocessing.image import ImageDataGenerator
+from tensorflow.keras.optimizers import Adam
+import splitfolders
+
+splitfolders.ratio('./rps/data', output = './rps/preprocessed', ratio = (0.8, 0.1, 0.1))
+
+dirLoc = './rps/preprocessed'
+
+traingen=ImageDataGenerator()
+valgen=ImageDataGenerator()
+testgen=ImageDataGenerator()
+
+trainGen = traingen.flow_from_directory(dirLoc+'/train', classes=['rock', 'scissors', 'paper'], batch_size=3)
+valGen = valgen.flow_from_directory(dirLoc+'/val', classes=['rock', 'scissors', 'paper'], batch_size=3)
+testGen = testgen.flow_from_directory(dirLoc+'/test', classes=['rock', 'scissors', 'paper'], batch_size=3)
+
+
+model = Sequential()
+model.add(Conv2D(filters=32, kernel_size=(3,3), strides=(2,2), activation='relu'))
+model.add(MaxPooling2D(2, 2))
+
+model.add(Conv2D(filters=64, kernel_size=(3,3), strides=(2,2), activation='relu'))
+model.add(MaxPooling2D(2, 2))
+model.add(Dropout(0.2))
+model.add(Conv2D(filters=64, kernel_size=(3,3), strides=(2,2), activation='relu'))
+model.add(MaxPooling2D(2, 2))
+model.add(Flatten())
+
+model.add(Dense(units=27, activation='relu'))
+model.add(Dense(units=3, activation='softmax'))
+
+
+model.compile(optimizer=Adam(learning_rate=0.001), loss='categorical_crossentropy', metrics=['accuracy'])
+
+from tensorflow.keras.callbacks import EarlyStopping
+earlyStopping = EarlyStopping(monitor='accuracy', patience=5)
+
+history = model.fit(trainGen,
+          steps_per_epoch=100,
+          epochs=30,
+          verbose=1,
+          validation_data=valGen,
+          validation_steps=50,
+         callbacks=earlyStopping)
+         
+         
+model.summary()
+
+
+model.evaluate(testGen)
+
+
+
+
+import matplotlib.pyplot as plt
+plt.style.use('seaborn-white')
+
+acc   = history.history['accuracy']
+val_acc = history.history['val_accuracy']
+loss  = history.history['loss']
+val_loss = history.history['val_loss']
+
+epochs = range(1, len(loss) + 1)
+
+plt.plot(epochs, loss, 'b-', label='training loss')
+plt.plot(epochs, val_loss, 'r:', label='validation loss')
+plt.grid()
+plt.legend()
+
+plt.figure()
+plt.plot(epochs, acc, 'b-', label='training accuracy')
+plt.plot(epochs, val_acc, 'r:', label='validation accuracy')
+plt.grid()
+plt.legend()
+
+plt.show()
+
